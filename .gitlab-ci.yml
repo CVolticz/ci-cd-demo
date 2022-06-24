@@ -1,0 +1,38 @@
+stages:
+  - Build
+
+# Variables section
+variables:
+  CONTAINER_REGISTRY: $CI_REGISTRY
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  CACHE_TTL: 2190h0m0s # three months
+
+# Gitlab Anchor called &kaniko-build
+.kaniko-build: &kaniko-build
+  - mkdir -p /kaniko/.docker
+  - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n ${CI_REGISTRY_USER}:${CI_REGISTRY_PASSWORD} | base64)\"}}}" > /kaniko/.docker/config.json
+  - cat /kaniko/.docker/config.json
+  - >-
+    /kaniko/executor
+    --context $CI_PROJECT_DIR
+    --dockerfile $CI_PROJECT_DIR/Dockerfile
+    --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    --destination $CI_REGISTRY_IMAGE:latest
+    --cache=true
+    --cache-repo $CI_REGISTRY_IMAGE
+    --cache-ttl $CACHE_TTL
+
+# Jobs
+build_image:
+  stage: Build
+  # tags: [devops, lighthouse]
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - *kaniko-build
+  only:
+    - main
+  environment:
+    name: $CI_COMMIT_BRANCH
